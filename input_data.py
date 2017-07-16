@@ -1,5 +1,8 @@
 import numpy
 from collections import deque
+
+from zmq.backend.cython import context
+
 from huffman import HuffmanTree
 numpy.random.seed(12345)
 
@@ -96,37 +99,65 @@ class InputData:
             batch_pairs.append(self.word_pair_catch.popleft())
         return batch_pairs
 
-    def get_cbow_batch_all_pairs(self, batch_size, window_size):
+    def get_cbow_batch_all_pairs(self, batch_size, context_size):
+        while len(self.cbow_word_pair_catch) < batch_size:
             for _ in range(10000):
+                self.input_file = open(self.input_file_name, encoding="utf-8")
                 sentence = self.input_file.readline()
                 if sentence is None or sentence == '':
-                    self.input_file = open(self.input_file_name, encoding="utf-8")
-                    sentence = self.input_file.readline()
+                    continue
+                    # self.input_file = open(self.input_file_name, encoding="utf-8")
+                    # sentence = self.input_file.readline()
+                # if sentence is not None or sentence != "":
                 word_ids = []
                 for word in sentence.strip().split(' '):
                     try:
                         word_ids.append(self.word2id[word])
                     except:
                         continue
+                # for i, u in enumerate(word_ids):
+                #     con = []
+                #     for j, v in enumerate(word_ids[max(i - window_size, 0):i + window_size]):
+                #        assert u < self.word_count
+                #        assert v < self.word_count
+                #        if i == j:
+                #            continue
+                #        elif j >= max(0, i - window_size + 1) and j <= min(len(word_ids), i + window_size - 1):
+                #            con.append(v)
+                #     if len(con) == 0:
+                #         continue
+                #     self.cbow_word_pair_catch.append((con, u))
+
                 # for i in range(2, len(word_ids) - 2):
-                #     # Context, target
                 #     bow = ([word_ids[i - 2], word_ids[i - 1], word_ids[i + 1], word_ids[i + 2]], word_ids[i])
                 #     self.cbow_word_pair_catch.append(bow)
+
                 for i, u in enumerate(word_ids):
-                    con = []
-                    for j, v in enumerate(word_ids[max(i - window_size, 0):i + window_size]):
+                    contentw = []
+                    for j, v in enumerate(word_ids):
                         assert u < self.word_count
                         assert v < self.word_count
                         if i == j:
                             continue
-                        elif j >= max(0, i - window_size + 1) and j <= min(len(word_ids), i + window_size - 1):
-                            con.append(v)
-                    if len(con) == 0:
+                        # elif j >= max(0, i - self.args.window_size + 1) and j <= min(len(word_ids), i + self.args.window_size-1):
+                        elif j >= max(0, i - context_size + 1) and j <= min(len(word_ids), i + context_size-1):
+                            contentw.append(v)
+                    if len(contentw) == 0:
                         continue
-                    self.cbow_word_pair_catch.append((con, u))
+                    self.cbow_word_pair_catch.append((contentw, u))
 
-            return self.cbow_word_pair_catch
-
+                # for i in range(context_size, len(word_ids) - context_size):
+                #     context = []
+                #     for j in range(context_size, 0, -1):
+                #         context.append(word_ids[i - j])
+                #     for j in range(1, context_size + 1):
+                #         context.append(word_ids[i + j])
+                #     bow = (context, word_ids[i])
+                #     self.cbow_word_pair_catch.append(bow)
+        batch_pairs = []
+        for _ in range(batch_size):
+            batch_pairs.append(self.cbow_word_pair_catch.popleft())
+        return batch_pairs
 
 
     def get_cbow_batch_pairs(self, batch_size, window_size):

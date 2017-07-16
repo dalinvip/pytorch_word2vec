@@ -26,7 +26,7 @@ while 1:
     d = cosine_similarity(embedding, all_embeddings)[0]
     d = zip(all_words, d)
     d = sorted(d, key=lambda x: x[1], reverse=True)
-    for w in d[:20]:
+    for w in d[:10]:
         if len(w[0]) < 2:
             continue
         print(w)
